@@ -1,0 +1,92 @@
+name: Review
+
+# The review team works through PR comments on their own schedule. This workflow
+# only does the bookkeeping, with no model calls and no API keys:
+#   - on new commits, or an edited description: post a review request addressed to
+#     the reviewers, for PRs from Tim's App or a maintainer. Anyone else's PR waits
+#     for a maintainer's "/review".
+#   - on each posted review, or the override label: re-run the gate
+# team.py decides who counts by account (each member posts through their own GitHub
+# App), so a comment that merely looks like a review changes nothing.
+#
+# Actions are pinned to commit SHAs; Dependabot keeps them current.
+#
+# pull_request_target runs this file and team/team.py from the BASE branch. The
+# PR's code is never checked out or executed, so a PR cannot rewrite its own gate.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited, labeled, unlabeled]
+  issue_comment:
+    types: [created, edited]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+
+# One queue per PR. Ordinary comments and unrelated labels get a throwaway group.
+concurrency:
+  group: >-
+    review-${{
+      ((github.event_name == 'issue_comment' && !(contains(github.event.comment.body, '<!-- team:review') || startsWith(github.event.comment.body, '/review'))) ||
+       (contains(fromJSON('["labeled","unlabeled"]'), github.event.action) && github.event.label.name != 'review-override') ||
+       (github.event.action == 'edited' && !github.event.changes.body))
+      && format('noop-{0}', github.run_id)
+      || (github.event.pull_request.number || github.event.issue.number || inputs.pr)
+    }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  request:
+    name: Request review
+    if: >-
+      (github.event_name == 'pull_request_target' && !github.event.pull_request.draft &&
+        (contains(fromJSON('["opened","synchronize","reopened","ready_for_review"]'), github.event.action) ||
+         (github.event.action == 'edited' && github.event.changes.body))) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/review') &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+          # A maintainer's "/review" starts a round on any PR, including one from outside the team.
+          FORCE: ${{ github.event_name == 'issue_comment' && '--force' || '' }}
+        run: python3 team/team.py request --pr "$PR" $FORCE
+
+  gate:
+    name: Gate
+    if: >-
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+        contains(github.event.comment.body, '<!-- team:review') &&
+        (github.event.comment.user.type == 'Bot' ||
+         contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))) ||
+      (github.event_name == 'pull_request_target' && github.event.label.name == 'review-override') ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+        run: python3 team/team.py gate --pr "$PR"

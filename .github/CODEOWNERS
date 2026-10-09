@@ -1,0 +1,8 @@
+# The ruleset requires one approval from a code owner, so nothing the team writes
+# merges without you. Your own PRs you merge with the admin bypass, since GitHub
+# does not let you approve them.
+*                    @Tobechukwu-Njoku
+
+# The pipeline itself. Changes here change who reviews what - read them closely.
+/.github/            @Tobechukwu-Njoku
+/scripts/            @Tobechukwu-Njoku
