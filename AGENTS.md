@@ -22,7 +22,11 @@ Treat every review and comment as a colleague's: take it seriously, verify it ag
 
 ## The project
 
-<!-- Fill in: what this project is, who it is for, the stack, and the two or three rules that matter most. Keep it under 20 lines. -->
+Watchtower pilot is a small Python library, `pilot/`, kept as a place to try out how the team works. It is for the maintainer only.
+
+- Python 3.9 or newer, standard library only. No `pyproject.toml`, requirements files or `pip install`.
+- Tests live in `tests/` and use `unittest`. `make ci` must run them (`python3 -m unittest discover -s tests`), locally and in CI.
+- Keep functions small and documented with a one-line docstring and an example.
 
 ## Checking for work
 

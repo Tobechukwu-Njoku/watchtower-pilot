@@ -1,16 +1,12 @@
-# Project name
+# Watchtower pilot
 
-One-line description of what this is and who it is for.
+A small Python library used to try out the Watchtower team end to end: issues are implemented by Tim Drake and reviewed by the team before the maintainer merges.
 
 ## Getting started
 
 ```sh
 make setup   # enable git hooks
-make ci      # build, lint, test
+make ci      # hygiene checks and tests
 ```
 
-## Contributing
-
-Work starts as an issue, lands as one-concern pull requests, and merges only after team review and a green `review/gate` status. See [AGENTS.md](AGENTS.md) for the workflow and rules.
-
-Maintainers: pipeline internals are in `docs/maintainers/`.
+See [AGENTS.md](AGENTS.md) for how work flows.
